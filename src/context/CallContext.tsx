@@ -54,6 +54,21 @@ interface CallRow {
 
 const Ctx = createContext<CallState | null>(null)
 
+/** Wait until the browser has gathered its network candidates, so offer/answer go out as ONE message. */
+function gatheringDone(peer: RTCPeerConnection, ms = 4000) {
+  return new Promise<void>((resolve) => {
+    if (peer.iceGatheringState === 'complete') return resolve()
+    const finish = () => {
+      clearTimeout(timer)
+      peer.removeEventListener('icegatheringstatechange', onChange)
+      resolve()
+    }
+    const onChange = () => peer.iceGatheringState === 'complete' && finish()
+    const timer = setTimeout(finish, ms)
+    peer.addEventListener('icegatheringstatechange', onChange)
+  })
+}
+
 const RING_MS = 45_000
 const STALE_INVITE_MS = 60_000
 const DISCONNECT_GRACE_MS = 8_000
@@ -71,7 +86,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const signalReady = useRef<Promise<void>>(Promise.resolve())
   const localStream = useRef<MediaStream | null>(null)
   const pendingIce = useRef<RTCIceCandidateInit[]>([])
-  const timers = useRef<{ ring?: ReturnType<typeof setTimeout>; disc?: ReturnType<typeof setTimeout>; clear?: ReturnType<typeof setTimeout> }>({})
+  const timers = useRef<{ ring?: ReturnType<typeof setTimeout>; disc?: ReturnType<typeof setTimeout>; clear?: ReturnType<typeof setTimeout>; connect?: ReturnType<typeof setTimeout>; retry?: ReturnType<typeof setInterval> }>({})
+  const inviting = useRef(new Set<string>())
 
   const commit = useCallback((next: CallView | null) => {
     callRef.current = next
@@ -90,6 +106,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
       stopRingtone()
       clearTimeout(timers.current.ring)
       clearTimeout(timers.current.disc)
+      clearTimeout(timers.current.connect)
+      clearInterval(timers.current.retry)
       pc.current?.close()
       pc.current = null
       localStream.current?.getTracks().forEach((t) => t.stop())
@@ -132,10 +150,16 @@ export function CallProvider({ children }: { children: ReactNode }) {
         const peer = pc.current
         if (!peer || callRef.current?.id !== id) return
         try {
+          if (peer.remoteDescription) {
+            // The caller retried because our answer may have been lost: send it again.
+            if (peer.localDescription) sendSignal('answer', { sdp: peer.localDescription })
+            return
+          }
           await peer.setRemoteDescription(payload.sdp as RTCSessionDescriptionInit)
           await flushIce()
           const answer = await peer.createAnswer()
           await peer.setLocalDescription(answer)
+          await gatheringDone(peer)
           sendSignal('answer', { sdp: peer.localDescription })
         } catch {
           void setCallStatus(id, 'ended').catch(() => {})
@@ -144,8 +168,9 @@ export function CallProvider({ children }: { children: ReactNode }) {
       })
       channel.on('broadcast', { event: 'answer' }, async ({ payload }) => {
         const peer = pc.current
-        if (!peer || callRef.current?.id !== id) return
+        if (!peer || callRef.current?.id !== id || peer.remoteDescription) return
         try {
+          clearInterval(timers.current.retry)
           await peer.setRemoteDescription(payload.sdp as RTCSessionDescriptionInit)
           await flushIce()
         } catch {
@@ -181,9 +206,6 @@ export function CallProvider({ children }: { children: ReactNode }) {
     (id: string) => {
       const peer = new RTCPeerConnection({ iceServers: iceServers() })
       localStream.current?.getTracks().forEach((t) => peer.addTrack(t, localStream.current!))
-      peer.onicecandidate = (e) => {
-        if (e.candidate) sendSignal('ice', { candidate: e.candidate.toJSON() })
-      }
       peer.ontrack = (e) => {
         if (callRef.current?.id === id) patch({ remote: e.streams[0] ?? new MediaStream([e.track]) })
       }
@@ -192,6 +214,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
         const s = peer.connectionState
         if (s === 'connected') {
           clearTimeout(timers.current.disc)
+          clearTimeout(timers.current.connect)
           if (callRef.current.phase !== 'active') patch({ phase: 'active', startedAt: Date.now() })
         } else if (s === 'disconnected') {
           clearTimeout(timers.current.disc)
@@ -207,7 +230,21 @@ export function CallProvider({ children }: { children: ReactNode }) {
       pc.current = peer
       return peer
     },
-    [patch, sendSignal, teardown],
+    [patch, teardown],
+  )
+
+  /** If the media path never comes up, fail with a clear message instead of hanging on 'Connecting…'. */
+  const armConnectTimeout = useCallback(
+    (id: string) => {
+      clearTimeout(timers.current.connect)
+      timers.current.connect = setTimeout(() => {
+        const cur = callRef.current
+        if (cur?.id !== id || cur.phase === 'active' || cur.ended) return
+        void setCallStatus(id, 'ended').catch(() => {})
+        teardown("Couldn't connect the call. Your networks may need a relay (TURN) to reach each other.")
+      }, 25_000)
+    },
+    [teardown],
   )
 
   // ── my actions ──────────────────────────────────────────────
@@ -273,6 +310,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     if (callRef.current?.id !== cur.id) return stream.getTracks().forEach((t) => t.stop())
     localStream.current = stream
     patch({ phase: 'connecting', local: stream })
+    armConnectTimeout(cur.id)
     createPeer(cur.id)
     try {
       await signalReady.current
@@ -281,7 +319,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
       toast(friendlyError(e, "Couldn't answer the call."), 'error')
       teardown(null)
     }
-  }, [createPeer, patch, teardown, toast])
+  }, [armConnectTimeout, createPeer, patch, teardown, toast])
 
   const hangup = useCallback(async () => {
     const cur = callRef.current
@@ -316,10 +354,12 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const onInvite = useCallback(
     async (row: CallRow) => {
       if (Date.now() - new Date(row.created_at).getTime() > STALE_INVITE_MS) return
+      if (callRef.current?.id === row.id || inviting.current.has(row.id)) return // already handled (realtime + fallback)
       if (callRef.current && !callRef.current.ended) {
         void setCallStatus(row.id, 'declined').catch(() => {}) // busy
         return
       }
+      inviting.current.add(row.id)
       let peer: CallPeer = { id: row.caller_id, name: 'Someone', avatar: null }
       try {
         const [p] = await getProfiles([row.caller_id])
@@ -354,12 +394,21 @@ export function CallProvider({ children }: { children: ReactNode }) {
           if (cur.direction === 'out' && cur.phase === 'ringing') {
             clearTimeout(timers.current.ring)
             patch({ phase: 'connecting' })
+            armConnectTimeout(row.id)
             try {
               await signalReady.current
               const peer = createPeer(row.id)
               const offer = await peer.createOffer()
               await peer.setLocalDescription(offer)
+              await gatheringDone(peer)
               sendSignal('offer', { sdp: peer.localDescription })
+              // Realtime broadcast is fire-and-forget: repeat the offer until the answer arrives.
+              let tries = 0
+              clearInterval(timers.current.retry)
+              timers.current.retry = setInterval(() => {
+                if (peer.remoteDescription || callRef.current?.id !== row.id || ++tries > 6) return clearInterval(timers.current.retry)
+                sendSignal('offer', { sdp: peer.localDescription })
+              }, 3000)
             } catch {
               void setCallStatus(row.id, 'ended').catch(() => {})
               teardown('Call failed')
@@ -377,7 +426,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
           teardown('Call ended')
       }
     },
-    [createPeer, patch, sendSignal, teardown],
+    [armConnectTimeout, createPeer, patch, sendSignal, teardown],
   )
 
   const handlers = useRef({ onInvite, onStatus })
@@ -396,6 +445,31 @@ export function CallProvider({ children }: { children: ReactNode }) {
     return () => {
       void supabase.removeChannel(channel)
     }
+  }, [userId])
+
+  // Realtime delivery is best-effort. During call setup only, double-check the database so a lost
+  // event can't leave a call unrung or stuck: incoming ringing rows, and the status of my current call.
+  useEffect(() => {
+    if (!userId) return
+    const cols = 'id, conversation_id, caller_id, callee_id, video, status, created_at'
+    const t = setInterval(async () => {
+      try {
+        const cur = callRef.current
+        if (cur && !cur.ended && cur.phase !== 'active') {
+          const { data } = await supabase.from('calls').select(cols).eq('id', cur.id).maybeSingle()
+          if (data) await handlers.current.onStatus(data as CallRow)
+        } else if (!cur) {
+          const since = new Date(Date.now() - 40_000).toISOString()
+          const { data } = await supabase
+            .from('calls').select(cols).eq('callee_id', userId).eq('status', 'ringing').gt('created_at', since)
+            .order('created_at', { ascending: false }).limit(1)
+          if (data?.[0]) await handlers.current.onInvite(data[0] as CallRow)
+        }
+      } catch {
+        /* offline: the next tick retries */
+      }
+    }, 3000)
+    return () => clearInterval(t)
   }, [userId])
 
   // Leaving/closing the tab mid-call: release the camera and mic.

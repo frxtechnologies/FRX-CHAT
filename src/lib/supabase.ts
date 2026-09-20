@@ -55,6 +55,5 @@ export const supabase: SupabaseClient = createClient(
   anonKey ?? 'missing-anon-key',
   {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storage },
-    realtime: { params: { eventsPerSecond: 10 } },
   },
 )
