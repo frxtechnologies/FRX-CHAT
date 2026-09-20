@@ -14,6 +14,8 @@ import Signup from '@/pages/Signup'
 
 const ProfilePage = lazy(() => import('@/pages/Profile'))
 const SettingsPage = lazy(() => import('@/pages/Settings'))
+// Dev-only visual harness; the DEV guard removes it from production bundles.
+const DevPreview = import.meta.env.DEV ? lazy(() => import('@/pages/DevPreview')) : null
 
 function FullScreenSpinner() {
   return (
@@ -44,6 +46,7 @@ export default function App() {
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                {DevPreview && <Route path="/__preview" element={<DevPreview />} />}
                 <Route
                   element={
                     <RequireAuth>

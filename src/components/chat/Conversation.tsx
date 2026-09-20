@@ -152,7 +152,7 @@ export function Conversation({ conversationId }: { conversationId: string }) {
         me={me}
         members={members}
         typingNames={typingNames}
-        onBack={() => navigate('/chats')}
+        onBack={() => navigate('/chats', { replace: true })}
         onInfo={() => setInfoOpen(true)}
         onCall={
           isGroup || !chat.other_user_id

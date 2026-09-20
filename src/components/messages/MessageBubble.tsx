@@ -1,4 +1,4 @@
-import { memo, useRef, type ReactNode } from 'react'
+import { memo, type MouseEvent, type ReactNode } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { IconAlert, IconChevronDown, IconClock, IconPhone, IconVideo, Ticks } from '@/components/ui/Icons'
 import { callLabel, parseCall } from '@/lib/calls'
@@ -66,17 +66,14 @@ export const MessageBubble = memo(function MessageBubble(props: Props) {
   const mine = m.sender_id === me
   const deleted = Boolean(m.deleted_at)
   const sender = profiles[m.sender_id]
-  const press = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  // Touch: long-press opens the actions menu. Desktop: right-click or the chevron.
-  const startPress = () => {
-    if (m.status) return
-    press.current = setTimeout(() => {
-      navigator.vibrate?.(8)
-      props.onMenu(m)
-    }, 450)
+  // Touch screens: tap a message to open its actions (links and buttons keep working).
+  // Desktop: right-click, or the chevron that appears on hover.
+  const onTap = (e: MouseEvent<HTMLDivElement>) => {
+    if (m.status || m.deleted_at || !window.matchMedia('(pointer: coarse)').matches) return
+    if ((e.target as HTMLElement).closest('a, button')) return
+    props.onMenu(m)
   }
-  const cancelPress = () => clearTimeout(press.current)
 
   if (m.message_type === 'call') {
     const { video, outcome } = parseCall(m.content)
@@ -145,16 +142,13 @@ export const MessageBubble = memo(function MessageBubble(props: Props) {
         <div className="relative max-w-full">
           <div
             onContextMenu={(e) => {
-              if (m.status) return
+              if (m.status || m.deleted_at) return
               e.preventDefault()
               props.onMenu(m)
             }}
-            onTouchStart={startPress}
-            onTouchEnd={cancelPress}
-            onTouchMove={cancelPress}
-            onTouchCancel={cancelPress}
+            onClick={onTap}
             className={cn(
-              'select-text rounded-2xl px-3 py-2 shadow-sm transition-shadow [-webkit-touch-callout:none]',
+              'msg-bubble rounded-2xl px-3 py-2 shadow-sm transition-shadow [-webkit-touch-callout:none]',
               mine ? 'bg-bubble-out text-white' : 'border border-line/60 bg-bubble text-fg',
               mine ? (endsRun ? 'rounded-br-md' : '') : endsRun ? 'rounded-bl-md' : '',
               highlighted && 'ring-2 ring-accent ring-offset-2 ring-offset-bg',
@@ -191,7 +185,7 @@ export const MessageBubble = memo(function MessageBubble(props: Props) {
                 aria-label={`${emoji} ${g.count}${g.mine ? ', remove your reaction' : ''}`}
                 aria-pressed={g.mine}
                 className={cn(
-                  'flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs shadow-sm transition-colors',
+                  'flex items-center gap-1 rounded-full border px-2 py-1 text-xs shadow-sm transition-colors',
                   g.mine ? 'border-accent bg-accent/20' : 'border-line bg-surface hover:bg-raised',
                 )}
               >

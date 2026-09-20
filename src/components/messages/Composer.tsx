@@ -157,14 +157,14 @@ export function Composer({ replyTo, replyToName, editing, onSend, onSaveEdit, on
             <IconSmile />
           </IconButton>
           {emojiOpen && (
-            <div className="absolute bottom-14 left-0 z-30 animate-fade">
-              <Suspense fallback={<div className="h-[380px] w-[320px] rounded-xl border border-line bg-surface" />}>
+            <div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] z-30 animate-fade md:absolute md:inset-x-auto md:bottom-14 md:left-0 md:w-[340px]">
+              <Suspense fallback={<div className="h-[340px] w-full rounded-xl border border-line bg-surface" />}>
                 <EmojiPicker
                   onEmojiClick={(d) => insertEmoji(d.emoji)}
                   theme={(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark') as never}
                   lazyLoadEmojis
-                  width={Math.min(340, window.innerWidth - 24)}
-                  height={380}
+                  width="100%"
+                  height={340}
                   previewConfig={{ showPreview: false }}
                 />
               </Suspense>
@@ -187,7 +187,7 @@ export function Composer({ replyTo, replyToName, editing, onSend, onSaveEdit, on
           onKeyDown={onKeyDown}
           onPaste={onPaste}
           onBlur={onStopTyping}
-          className="max-h-40 min-h-11 flex-1 resize-none rounded-2xl border border-transparent bg-raised px-4 py-[11px] text-[15px] leading-snug placeholder:text-muted focus:border-accent focus:outline-none"
+          className="composer-input max-h-40 min-h-11 min-w-0 flex-1 resize-none rounded-2xl border border-transparent bg-raised px-4 py-[11px] text-[15px] leading-snug placeholder:text-muted focus:border-accent focus:outline-none"
         />
         <button
           onClick={submit}

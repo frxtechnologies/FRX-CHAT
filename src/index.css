@@ -12,7 +12,7 @@
   --muted: 129 145 178;
   --accent: 59 130 246;
   --accent-fg: 255 255 255;
-  --bubble: 22 33 58;
+  --bubble: 28 41 71;
   --bubble-out: 37 99 235;
   --danger: 239 68 68;
   --ok: 52 211 153;
@@ -52,6 +52,32 @@ body {
 .h-app {
   height: 100vh;
   height: 100dvh;
+  height: var(--app-h, 100dvh);
+}
+
+/* iOS Safari zooms the page when an input under 16px gets focus. */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* On touch screens, tapping a message opens its actions, so suppress text-selection popups. */
+@media (pointer: coarse) {
+  .msg-bubble {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
+/* Hide the textarea scrollbar until the text actually overflows. */
+.composer-input {
+  scrollbar-width: none;
+}
+.composer-input::-webkit-scrollbar {
+  display: none;
 }
 
 * {

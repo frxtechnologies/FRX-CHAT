@@ -211,7 +211,7 @@ function GroupInfo({ chat, members, onClose, onChanged }: Props) {
                     <button
                       disabled={busy}
                       onClick={() => run(() => setMemberRole(chat.id, m.user_id, 'admin'), "Couldn't change that role.")}
-                      className="rounded px-1.5 py-1 text-xs text-muted hover:text-fg"
+                      className="rounded-lg px-2.5 py-2 text-xs text-muted hover:bg-raised hover:text-fg"
                     >
                       Make admin
                     </button>
@@ -219,7 +219,7 @@ function GroupInfo({ chat, members, onClose, onChanged }: Props) {
                   <button
                     disabled={busy}
                     onClick={() => run(() => removeMember(chat.id, m.user_id), "Couldn't remove that member.")}
-                    className="rounded px-1.5 py-1 text-xs text-danger hover:underline"
+                    className="rounded-lg px-2.5 py-2 text-xs text-danger hover:bg-danger/10"
                   >
                     Remove
                   </button>
