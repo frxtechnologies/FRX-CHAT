@@ -1,6 +1,7 @@
 import { memo, useRef, type ReactNode } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
-import { IconAlert, IconChevronDown, IconClock, Ticks } from '@/components/ui/Icons'
+import { IconAlert, IconChevronDown, IconClock, IconPhone, IconVideo, Ticks } from '@/components/ui/Icons'
+import { callLabel, parseCall } from '@/lib/calls'
 import { cn, formatTime, splitLinks } from '@/lib/utils'
 import type { Message, Profile } from '@/types'
 import { AttachmentList } from './AttachmentView'
@@ -76,6 +77,27 @@ export const MessageBubble = memo(function MessageBubble(props: Props) {
     }, 450)
   }
   const cancelPress = () => clearTimeout(press.current)
+
+  if (m.message_type === 'call') {
+    const { video, outcome } = parseCall(m.content)
+    const missed = outcome !== 'ended'
+    return (
+      <div id={`msg-${m.id}`} className="my-2 flex justify-center px-3">
+        <span
+          className={cn(
+            'inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs',
+            missed && !mine ? 'text-danger' : 'text-muted',
+          )}
+        >
+          {video ? <IconVideo width={15} height={15} /> : <IconPhone width={15} height={15} />}
+          {callLabel(m.content, mine)}
+          <time dateTime={m.created_at} className="opacity-70">
+            {formatTime(m.created_at)}
+          </time>
+        </span>
+      </div>
+    )
+  }
 
   const grouped = new Map<string, { count: number; mine: boolean }>()
   for (const r of m.reactions) {

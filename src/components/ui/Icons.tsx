@@ -153,6 +153,38 @@ export const IconAlert = (p: P) => (
   </Base>
 )
 
+export const IconPhone = (p: P) => (
+  <Base {...p}>
+    <path d="M6.5 4h3l1.5 4-2 1.3a11 11 0 0 0 5.7 5.7L16 13l4 1.5v3a2 2 0 0 1-2.2 2A15 15 0 0 1 4.5 6.2 2 2 0 0 1 6.5 4Z" />
+  </Base>
+)
+export const IconPhoneOff = (p: P) => (
+  <Base {...p}>
+    <path d="M3 13.5c5-4.3 13-4.3 18 0l-1.2 2.4-3.6-1.1v-2.5a11 11 0 0 0-6.4 0v2.5l-3.6 1.1L3 13.5Z" />
+  </Base>
+)
+export const IconVideo = (p: P) => (
+  <Base {...p}>
+    <rect x="3.5" y="6.5" width="12" height="11" rx="2" />
+    <path d="m15.5 11 5-3v8l-5-3" />
+  </Base>
+)
+export const IconVideoOff = (p: P) => (
+  <Base {...p}>
+    <path d="M3.5 8.5v7a2 2 0 0 0 2 2h8M15.5 13v-1l5-3v8l-3-1.8M9 6.5h4.5a2 2 0 0 1 2 2v1M3 3l18 18" />
+  </Base>
+)
+export const IconMic = (p: P) => (
+  <Base {...p}>
+    <rect x="9" y="3.5" width="6" height="11" rx="3" />
+    <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3" />
+  </Base>
+)
+export const IconMicOff = (p: P) => (
+  <Base {...p}>
+    <path d="M9 9V6.5a3 3 0 0 1 5.7-1.3M15 10v1.5a3 3 0 0 1-4.6 2.5M5.5 11.5a6.5 6.5 0 0 0 10.7 5M12 18v3M3 3l18 18" />
+  </Base>
+)
 /** Sent / delivered / read ticks. */
 export function Ticks({ double, read }: { double: boolean; read: boolean }) {
   return (

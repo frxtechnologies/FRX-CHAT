@@ -1,5 +1,5 @@
 import { Avatar } from '@/components/ui/Avatar'
-import { IconBack } from '@/components/ui/Icons'
+import { IconBack, IconPhone, IconVideo } from '@/components/ui/Icons'
 import { IconButton } from '@/components/ui/Primitives'
 import { usePresence } from '@/context/PresenceContext'
 import { useLastSeen } from '@/hooks/useMisc'
@@ -14,9 +14,10 @@ interface Props {
   typingNames: string[]
   onBack: () => void
   onInfo: () => void
+  onCall?: (video: boolean) => void
 }
 
-export function ChatHeader({ chat, me, members, typingNames, onBack, onInfo }: Props) {
+export function ChatHeader({ chat, me, members, typingNames, onBack, onInfo, onCall }: Props) {
   const { isOnline } = usePresence()
   const title = chatTitle(chat)
   const isGroup = chat.type === 'group'
@@ -63,6 +64,16 @@ export function ChatHeader({ chat, me, members, typingNames, onBack, onInfo }: P
           </span>
         </span>
       </button>
+      {!isGroup && onCall && (
+        <div className="flex shrink-0 items-center">
+          <IconButton label="Voice call" onClick={() => onCall(false)}>
+            <IconPhone />
+          </IconButton>
+          <IconButton label="Video call" onClick={() => onCall(true)}>
+            <IconVideo />
+          </IconButton>
+        </div>
+      )}
     </header>
   )
 }

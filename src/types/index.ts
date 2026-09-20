@@ -46,7 +46,7 @@ export interface Member {
   profile: Profile
 }
 
-export type MessageType = 'text' | 'image' | 'file'
+export type MessageType = 'text' | 'image' | 'file' | 'call'
 
 export interface Attachment {
   id: string

@@ -5,6 +5,7 @@ import { fetchChatList } from '@/services/conversations'
 import { getProfiles } from '@/services/profiles'
 import { playMessageSound, showBrowserNotification } from '@/lib/notify'
 import { brand } from '@/config/brand'
+import { callLabel } from '@/lib/calls'
 import { debounce, friendlyError } from '@/lib/utils'
 import type { ChatListItem } from '@/types'
 import { useAuth } from './AuthContext'
@@ -88,7 +89,8 @@ export function ChatListProvider({ children }: { children: ReactNode }) {
       }
       const chat = chatsRef.current.find((c) => c.id === row.conversation_id)
       const title = chat?.type === 'group' && chat.name ? `${chat.name}` : (sender ?? brand.name)
-      const text = row.message_type === 'text' ? row.content : 'Sent an attachment'
+      const text =
+        row.message_type === 'text' ? row.content : row.message_type === 'call' ? callLabel(row.content, false) : 'Sent an attachment'
       const body = chat?.type === 'group' && sender ? `${sender}: ${text}` : text
       if (document.visibilityState === 'hidden' || !document.hasFocus()) {
         showBrowserNotification(title, body, row.conversation_id, () => navigate(`/chats/${row.conversation_id}`))

@@ -8,6 +8,7 @@ import { Lightbox } from '@/components/messages/AttachmentView'
 import { MessageList } from '@/components/messages/MessageList'
 import { MessageMenu } from '@/components/messages/MessageMenu'
 import { useAuth } from '@/context/AuthContext'
+import { useCall } from '@/context/CallContext'
 import { useChatList } from '@/context/ChatListContext'
 import { usePresence } from '@/context/PresenceContext'
 import { useToast } from '@/context/ToastContext'
@@ -114,6 +115,7 @@ export function Conversation({ conversationId }: { conversationId: string }) {
   const openMenu = useCallback((m: Message) => setMenuFor(m), [])
   const openImage = useCallback((url: string, name: string, path: string) => setLightbox({ url, name, path }), [])
   const { toggleReaction, retry, discard } = msgs
+  const { startCall } = useCall()
 
   if (chatsLoading) {
     return (
@@ -145,7 +147,20 @@ export function Conversation({ conversationId }: { conversationId: string }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-bg">
-      <ChatHeader chat={chat} me={me} members={members} typingNames={typingNames} onBack={() => navigate('/chats')} onInfo={() => setInfoOpen(true)} />
+      <ChatHeader
+        chat={chat}
+        me={me}
+        members={members}
+        typingNames={typingNames}
+        onBack={() => navigate('/chats')}
+        onInfo={() => setInfoOpen(true)}
+        onCall={
+          isGroup || !chat.other_user_id
+            ? undefined
+            : (video) =>
+                void startCall(chat.id, { id: chat.other_user_id!, name: chat.other_full_name ?? 'Friend', avatar: chat.other_avatar_url }, video)
+        }
+      />
 
       {(!online || !realtimeOk || !msgs.live) && (
         <div role="status" className="bg-danger/15 px-4 py-1.5 text-center text-xs">

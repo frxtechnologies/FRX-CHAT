@@ -52,6 +52,13 @@ Delivery is inferred from presence; there's no per-device delivery ack.
 - Typing and presence channels are **private** and gated by `realtime.messages` policies (`can_use_topic`).
 - Only the anon key is in the browser. Raw database errors are mapped to friendly messages (`friendlyError`).
 
+## Calls (voice + video, 1:1)
+
+Run supabase/migrations/0002_calls.sql after 0001. Call state lives in a calls table (created only through start_call / set_call_status RPCs, so the caller is authenticated by the database). WebRTC offers/answers/ICE travel over a private Realtime channel call:<id> that only the two participants can join. Media is peer-to-peer and never stored. When a call ends, a "Voice call · 2:31" / "Missed video call" entry is added to the chat.
+
+- **Reliability:** STUN only by default. For strict networks add a TURN relay via VITE_TURN_URL, VITE_TURN_USERNAME, VITE_TURN_CREDENTIAL (these are visible in the browser, so use a limited/rotating TURN account).
+- Ringing works only while the callee has the app open (no push yet). Group calls aren't supported.
+
 ## Known limits
 
 - **I could not run this against a live Supabase project in this environment.** It type-checks and builds cleanly, and the setup screen, auth redirect, and offline error handling were exercised in a browser, but the messaging flows (send/receive, RLS, uploads, presence, groups) are untested end to end. Run the checklist below before trusting it.

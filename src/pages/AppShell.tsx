@@ -2,6 +2,8 @@ import { NavLink, Outlet, useMatch } from 'react-router-dom'
 import { Avatar } from '@/components/ui/Avatar'
 import { IconChat, IconSettings, IconUser, Logo } from '@/components/ui/Icons'
 import { useAuth } from '@/context/AuthContext'
+import { CallOverlay } from '@/components/calls/CallOverlay'
+import { CallProvider } from '@/context/CallContext'
 import { ChatListProvider, useChatList } from '@/context/ChatListContext'
 import { PresenceProvider } from '@/context/PresenceContext'
 import { cn } from '@/lib/utils'
@@ -81,7 +83,10 @@ export default function AppShell() {
   return (
     <ChatListProvider>
       <PresenceProvider>
-        <Shell />
+        <CallProvider>
+          <Shell />
+          <CallOverlay />
+        </CallProvider>
       </PresenceProvider>
     </ChatListProvider>
   )

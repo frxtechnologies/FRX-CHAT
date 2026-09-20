@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
+import { callLabel } from '@/lib/calls'
 import { cn, formatListTime } from '@/lib/utils'
 import type { ChatListItem as Item } from '@/types'
 
@@ -10,6 +11,7 @@ export function chatTitle(c: Item) {
 function previewText(c: Item, me: string) {
   if (!c.last_message_id) return 'No messages yet'
   if (c.last_message_deleted) return 'This message was deleted'
+  if (c.last_message_type === 'call') return callLabel(c.last_message_content ?? '', c.last_message_sender_id === me)
   const body =
     c.last_message_type === 'image' && !c.last_message_content
       ? 'Photo'
