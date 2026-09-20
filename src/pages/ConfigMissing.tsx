@@ -1,5 +1,6 @@
 import { brand } from '@/config/brand'
 import { Logo } from '@/components/ui/Icons'
+import { configProblem } from '@/lib/supabase'
 
 export default function ConfigMissing() {
   return (
@@ -13,6 +14,11 @@ export default function ConfigMissing() {
         <p className="mt-2 text-sm text-muted">
           This app stores messages in Supabase. It needs two environment variables before it can start.
         </p>
+        {configProblem && (
+          <p role="alert" className="mt-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm">
+            {configProblem}
+          </p>
+        )}
         <ol className="mt-6 space-y-4 text-sm">
           <li>
             <b>1.</b> Create a project at supabase.com, then open the SQL editor and run{' '}

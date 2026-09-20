@@ -1,9 +1,28 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+// Hosts sometimes keep stray quotes/whitespace from pasted values, so clean them first.
+const clean = (v: unknown) => (typeof v === 'string' ? v.trim().replace(/^["']|["']$/g, '').trim() : undefined)
+const url = clean(import.meta.env.VITE_SUPABASE_URL)
+const anonKey = clean(import.meta.env.VITE_SUPABASE_ANON_KEY)
 
-export const isSupabaseConfigured = Boolean(url && anonKey)
+function validUrl(v: string | undefined) {
+  try {
+    return Boolean(v && /^https?:$/.test(new URL(v).protocol))
+  } catch {
+    return false
+  }
+}
+
+export const isSupabaseConfigured = validUrl(url) && Boolean(anonKey)
+
+/** Why the app can't start, for the setup screen. */
+export const configProblem: string | null = !url
+  ? 'VITE_SUPABASE_URL is not set.'
+  : !validUrl(url)
+    ? 'VITE_SUPABASE_URL is not a valid URL. It must look like https://your-project-ref.supabase.co (with https://, no quotes or spaces).'
+    : !anonKey
+      ? 'VITE_SUPABASE_ANON_KEY is not set.'
+      : null
 
 const REMEMBER_KEY = 'frx.remember'
 
@@ -51,8 +70,8 @@ const storage = {
 
 // Only the public anon key is ever used in the browser; access is enforced by RLS.
 export const supabase: SupabaseClient = createClient(
-  url ?? 'http://localhost:54321',
-  anonKey ?? 'missing-anon-key',
+  isSupabaseConfigured ? url! : 'http://localhost:54321',
+  isSupabaseConfigured ? anonKey! : 'missing-anon-key',
   {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storage },
   },
